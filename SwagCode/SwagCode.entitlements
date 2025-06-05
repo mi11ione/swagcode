@@ -6,5 +6,19 @@
     <true/>
     <key>com.apple.security.files.user-selected.read-only</key>
     <true/>
+    <key>com.apple.security.files.user-selected.read-write</key>
+    <true/>
+    <key>com.apple.security.device.clipboard</key>
+    <true/>
+    <key>com.apple.security.automation.apple-events</key>
+    <true/>
+    <key>com.apple.security.temporary-exception.apple-events</key>
+    <array>
+        <string>com.apple.systemevents</string>
+    </array>
+    <key>com.apple.security.personal-information.accessibility</key>
+    <true/>
+    <key>com.apple.security.automation.accessibility</key>
+    <true/>
 </dict>
 </plist>
