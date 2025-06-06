@@ -14,6 +14,8 @@ struct SwagCodeApp: App {
     @StateObject private var hotkeyManager: HotkeyManager
     @State private var statusBarController: StatusBarController?
     @State private var showingOnboarding = false
+    @State private var showingSettings = false
+    @State private var selectedSettingsTab: SettingsView.SettingsTab = .general
     
     init() {
         // Create single instance of settings to avoid conflicts
@@ -60,6 +62,14 @@ struct SwagCodeApp: App {
                         clipboardManager: clipboardManager
                     )
                     .frame(width: 720, height: 600)
+                }
+                .sheet(isPresented: $showingSettings) {
+                    SettingsViewWithTab(
+                        settings: settings,
+                        clipboardManager: clipboardManager,
+                        hotkeyManager: hotkeyManager,
+                        selectedTab: $selectedSettingsTab
+                    )
                 }
         }
         .windowStyle(.hiddenTitleBar)
@@ -117,9 +127,20 @@ struct SwagCodeApp: App {
         // Setup hotkeys if permissions are granted (check asynchronously)
         print("🔑 Setting up hotkeys...")
         DispatchQueue.global(qos: .userInitiated).async {
+            let permissions = self.hotkeyManager.checkAllPermissions()
+            
             DispatchQueue.main.async {
                 print("🔑 Calling hotkeyManager.startHotkeys()")
                 self.hotkeyManager.startHotkeys()
+                
+                // Check if permissions are missing and hotkeys are enabled
+                if self.settings.hotkeysEnabled && (!permissions.accessibility || !permissions.inputMonitoring) {
+                    print("⚠️ Missing permissions detected, opening settings...")
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+                        self.selectedSettingsTab = .permissions
+                        self.showingSettings = true
+                    }
+                }
             }
         }
     }

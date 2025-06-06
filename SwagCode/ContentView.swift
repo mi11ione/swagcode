@@ -276,17 +276,7 @@ struct ContentView: View {
             .buttonStyle(.bordered)
             .controlSize(.large)
             
-            Button(action: {
-                hotkeyManager.recheckPermissions()
-            }) {
-                Label("Fix Hotkeys", systemImage: "key.fill")
-                    .frame(maxWidth: .infinity)
-            }
-            .buttonStyle(.bordered)
-            .controlSize(.large)
-            .foregroundColor(.orange)
-            .help("Recheck permissions and restart hotkeys")
-            
+
             Button(action: {
                 withAnimation {
                     clipboardManager.clearAll()

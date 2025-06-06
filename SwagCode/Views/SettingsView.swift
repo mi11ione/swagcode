@@ -13,11 +13,19 @@ struct SettingsView: View {
     @ObservedObject var hotkeyManager: HotkeyManager
     @Environment(\.dismiss) private var dismiss
     
-    @State private var selectedTab: SettingsTab = .general
+    @State private var selectedTab: SettingsTab
+    
+    init(settings: AppSettings, clipboardManager: ClipboardManager, hotkeyManager: HotkeyManager, initialTab: SettingsTab = .general) {
+        self.settings = settings
+        self.clipboardManager = clipboardManager
+        self.hotkeyManager = hotkeyManager
+        self._selectedTab = State(initialValue: initialTab)
+    }
     
     enum SettingsTab: String, CaseIterable {
         case general = "General"
         case hotkeys = "Hotkeys"
+        case permissions = "Permissions"
         case appearance = "Appearance"
         case data = "Data"
         case about = "About"
@@ -26,6 +34,7 @@ struct SettingsView: View {
             switch self {
             case .general: return "gear"
             case .hotkeys: return "keyboard"
+            case .permissions: return "lock.shield"
             case .appearance: return "paintbrush"
             case .data: return "folder"
             case .about: return "info.circle"
@@ -87,6 +96,8 @@ struct SettingsView: View {
                             generalSettings
                         case .hotkeys:
                             hotkeySettings
+                        case .permissions:
+                            permissionsSettings
                         case .appearance:
                             appearanceSettings
                         case .data:
@@ -249,6 +260,78 @@ struct SettingsView: View {
                         insertion: .move(edge: .trailing).combined(with: .opacity),
                         removal: .move(edge: .leading).combined(with: .opacity)
                     ))
+                }
+            }
+        }
+    }
+    
+    @ViewBuilder
+    private var permissionsSettings: some View {
+        settingsSection("System Permissions", icon: "lock.shield") {
+            VStack(spacing: 20) {
+                Text("SwagCode requires certain system permissions to function properly. Check the status below and grant permissions if needed.")
+                    .font(.body)
+                    .foregroundColor(.secondary)
+                    .multilineTextAlignment(.leading)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                
+                VStack(spacing: 16) {
+                    PermissionRow(
+                        icon: "accessibility",
+                        title: "Accessibility",
+                        description: "Required for global hotkeys to work system-wide",
+                        isGranted: hotkeyManager.checkAccessibilityPermissions()
+                    ) {
+                        hotkeyManager.requestAccessibilityPermissions()
+                    }
+                    
+                    PermissionRow(
+                        icon: "keyboard",
+                        title: "Input Monitoring",
+                        description: "Required to detect keyboard shortcuts globally",
+                        isGranted: hotkeyManager.checkInputMonitoringPermissions()
+                    ) {
+                        hotkeyManager.requestInputMonitoringPermissions()
+                    }
+                }
+                
+                Divider()
+                    .padding(.vertical, 8)
+                
+                VStack(spacing: 12) {
+                    Button(action: {
+                        hotkeyManager.recheckPermissions()
+                    }) {
+                        Label("Refresh Permission Status", systemImage: "arrow.clockwise")
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.bordered)
+                    .controlSize(.large)
+                    
+                    if !hotkeyManager.checkAccessibilityPermissions() || !hotkeyManager.checkInputMonitoringPermissions() {
+                        VStack(spacing: 8) {
+                            HStack {
+                                Image(systemName: "exclamationmark.triangle.fill")
+                                    .foregroundColor(.orange)
+                                Text("Some permissions are missing")
+                                    .fontWeight(.medium)
+                                Spacer()
+                            }
+                            
+                            Text("Hotkeys will not work until all required permissions are granted. Click the buttons above to open system settings.")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                                .multilineTextAlignment(.leading)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                        }
+                        .padding(12)
+                        .background(Color.orange.opacity(0.1))
+                        .cornerRadius(8)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 8)
+                                .stroke(Color.orange.opacity(0.3), lineWidth: 1)
+                        )
+                    }
                 }
             }
         }
@@ -582,6 +665,24 @@ struct SettingsFeatureRow: View {
             
             Spacer()
         }
+    }
+}
+
+
+
+struct SettingsViewWithTab: View {
+    @ObservedObject var settings: AppSettings
+    @ObservedObject var clipboardManager: ClipboardManager
+    @ObservedObject var hotkeyManager: HotkeyManager
+    @Binding var selectedTab: SettingsView.SettingsTab
+    
+    var body: some View {
+        SettingsView(
+            settings: settings,
+            clipboardManager: clipboardManager,
+            hotkeyManager: hotkeyManager,
+            initialTab: selectedTab
+        )
     }
 }
 

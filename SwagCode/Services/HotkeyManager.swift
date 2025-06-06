@@ -8,11 +8,14 @@
 import Foundation
 import AppKit
 import Carbon
+import UserNotifications
 
 class HotkeyManager: ObservableObject {
     private var eventMonitor: Any?
     private weak var clipboardManager: ClipboardManager?
     private let settings: AppSettings
+    private var lastHotkeyTime: Date = Date.distantPast
+    private let hotkeyDebounceInterval: TimeInterval = 0.3 // 300ms debounce
     
     init(clipboardManager: ClipboardManager, settings: AppSettings) {
         self.clipboardManager = clipboardManager
@@ -113,6 +116,14 @@ class HotkeyManager: ObservableObject {
     private func handleHotkey(number: Int) {
         print("🚀 handleHotkey called with number: \(number)")
         
+        // Debounce to prevent multiple rapid triggers
+        let now = Date()
+        if now.timeIntervalSince(lastHotkeyTime) < hotkeyDebounceInterval {
+            print("⏱️ Debounced - too soon since last hotkey")
+            return
+        }
+        lastHotkeyTime = now
+        
         guard let clipboardManager = self.clipboardManager else { 
             print("❌ No clipboardManager")
             return 
@@ -132,6 +143,11 @@ class HotkeyManager: ObservableObject {
         clipboardManager.copyToClipboard(item)
         print("📋 Item copied to clipboard")
         
+        // Automatically paste the content
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+            self.performPaste()
+        }
+        
         // Show brief notification
         if settings.showNotifications {
             showHotkeyNotification(for: item, number: number)
@@ -139,18 +155,44 @@ class HotkeyManager: ObservableObject {
         }
     }
     
+    private func performPaste() {
+        // Simulate Cmd+V to paste the content
+        let source = CGEventSource(stateID: .hidSystemState)
+        
+        // Create key down event for Cmd+V
+        let keyDownEvent = CGEvent(keyboardEventSource: source, virtualKey: 0x09, keyDown: true) // V key
+        keyDownEvent?.flags = .maskCommand
+        
+        // Create key up event for Cmd+V
+        let keyUpEvent = CGEvent(keyboardEventSource: source, virtualKey: 0x09, keyDown: false) // V key
+        keyUpEvent?.flags = .maskCommand
+        
+        // Post the events
+        keyDownEvent?.post(tap: .cghidEventTap)
+        keyUpEvent?.post(tap: .cghidEventTap)
+        
+        print("⌨️ Performed paste (Cmd+V)")
+    }
+    
     private func showHotkeyNotification(for item: ClipboardItem, number: Int) {
-        let notification = NSUserNotification()
-        notification.title = "SwagCode"
-        notification.subtitle = "Pasted item #\(number)"
-        notification.informativeText = String(item.displayTitle.prefix(50))
-        notification.soundName = nil // Silent notification
+        let content = UNMutableNotificationContent()
+        content.title = "SwagCode"
+        content.subtitle = "Pasted item #\(number)"
+        content.body = String(item.displayTitle.prefix(50))
+        content.sound = nil // Silent notification
         
-        NSUserNotificationCenter.default.deliver(notification)
+        let request = UNNotificationRequest(
+            identifier: "hotkey-\(number)-\(Date().timeIntervalSince1970)",
+            content: content,
+            trigger: nil
+        )
         
-        // Auto-remove after 2 seconds
-        DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
-            NSUserNotificationCenter.default.removeDeliveredNotification(notification)
+        UNUserNotificationCenter.current().add(request) { error in
+            if let error = error {
+                print("🔔 Notification error: \(error)")
+            } else {
+                print("🔔 Notification sent successfully")
+            }
         }
     }
     
@@ -207,9 +249,7 @@ class HotkeyManager: ObservableObject {
                     print("🎉 Permission granted! Restarting hotkeys...")
                     self.startHotkeys()
                 } else {
-                    print("🔐 Still no permission - opening settings...")
-                    let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility")!
-                    NSWorkspace.shared.open(url)
+                    print("🔐 Still no permission - user needs to grant it manually")
                 }
             }
             
@@ -249,8 +289,7 @@ class HotkeyManager: ObservableObject {
     }
     
     func requestAccessibilityPermissions() {
-        // This method is now handled by the onboarding flow
-        // We just open system preferences without blocking
+        // Open system preferences for Accessibility
         NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility")!)
     }
     

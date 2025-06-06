@@ -9,6 +9,7 @@ import Foundation
 import AppKit
 import SwiftUI
 import CoreGraphics
+import UserNotifications
 
 class ClipboardManager: ObservableObject {
     @Published var clipboardItems: [ClipboardItem] = []
@@ -124,73 +125,36 @@ class ClipboardManager: ObservableObject {
     }
     
     private func showClipboardNotification(for item: ClipboardItem) {
-        let notification = NSUserNotification()
-        notification.title = "SwagCode"
-        notification.subtitle = "New \(item.type.rawValue) saved"
-        notification.informativeText = String(item.displayTitle.prefix(100))
-        notification.soundName = nil // Silent notification to avoid annoyance
+        let content = UNMutableNotificationContent()
+        content.title = "SwagCode"
+        content.subtitle = "New \(item.type.rawValue) saved"
+        content.body = String(item.displayTitle.prefix(100))
+        content.sound = nil // Silent notification to avoid annoyance
         
-        NSUserNotificationCenter.default.deliver(notification)
+        let request = UNNotificationRequest(
+            identifier: "clipboard-\(item.id)-\(Date().timeIntervalSince1970)",
+            content: content,
+            trigger: nil
+        )
         
-        // Auto-remove after 3 seconds
-        DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
-            NSUserNotificationCenter.default.removeDeliveredNotification(notification)
+        UNUserNotificationCenter.current().add(request) { error in
+            if let error = error {
+                print("🔔 Clipboard notification error: \(error)")
+            } else {
+                print("🔔 Clipboard notification sent successfully")
+            }
         }
     }
     
     func copyToClipboard(_ item: ClipboardItem) {
-        // First, copy to system clipboard
+        // Copy to system clipboard
         pasteboard.clearContents()
         pasteboard.setString(item.content, forType: .string)
         lastChangeCount = pasteboard.changeCount // Prevent re-adding the same item
-        
-        // Then simulate Cmd+V to paste in the active application
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-            self.simulatePaste()
-        }
+        print("📋 ClipboardManager: Item copied to system clipboard")
     }
     
-    private func simulatePaste() {
-        // Method 1: Try using AppleScript (more reliable)
-        let script = """
-        tell application "System Events"
-            keystroke "v" using command down
-        end tell
-        """
-        
-        if let appleScript = NSAppleScript(source: script) {
-            var error: NSDictionary?
-            appleScript.executeAndReturnError(&error)
-            
-            if error != nil {
-                // Fallback to CGEvent method
-                simulatePasteWithCGEvent()
-            }
-        } else {
-            // Fallback to CGEvent method
-            simulatePasteWithCGEvent()
-        }
-    }
-    
-    private func simulatePasteWithCGEvent() {
-        // Create and post a Cmd+V key event to paste the content
-        let source = CGEventSource(stateID: .hidSystemState)
-        
-        // Key down for Cmd+V (V key is virtual key code 9)
-        if let keyDownEvent = CGEvent(keyboardEventSource: source, virtualKey: 9, keyDown: true) {
-            keyDownEvent.flags = .maskCommand
-            keyDownEvent.post(tap: .cghidEventTap)
-        }
-        
-        // Small delay between key down and up
-        usleep(10000) // 10ms delay
-        
-        // Key up for Cmd+V
-        if let keyUpEvent = CGEvent(keyboardEventSource: source, virtualKey: 9, keyDown: false) {
-            keyUpEvent.flags = .maskCommand
-            keyUpEvent.post(tap: .cghidEventTap)
-        }
-    }
+
     
     func deleteItem(_ item: ClipboardItem) {
         clipboardItems.removeAll { $0.id == item.id }
