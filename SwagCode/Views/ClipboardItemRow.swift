@@ -11,6 +11,7 @@ struct ClipboardItemRow: View {
     let item: ClipboardItem
     let index: Int
     @ObservedObject var clipboardManager: ClipboardManager
+    @ObservedObject var settings: AppSettings
     @State private var isHovered = false
     @State private var showingFullContent = false
     @State private var isExpanded = false
@@ -90,7 +91,7 @@ struct ClipboardItemRow: View {
                 // Hotkey indicator
                 if index < 9 {
                     HStack(spacing: 2) {
-                        Text("⌘⌥\(index + 1)")
+                        Text("\(settings.hotkeyModifiers.displayString)\(index + 1)")
                             .font(.system(.caption, design: .monospaced))
                             .fontWeight(.bold)
                             .foregroundColor(.white)
@@ -111,19 +112,17 @@ struct ClipboardItemRow: View {
     
     private var contentSection: some View {
         VStack(alignment: .leading, spacing: 8) {
-            // Title
-            Text(item.displayTitle)
-                .font(.headline)
-                .fontWeight(.semibold)
-                .lineLimit(2)
-                .foregroundColor(.primary)
-            
-            // Content preview or full content
+            // Content preview or full content (no title)
             Group {
                 if showingFullContent {
                     ScrollView {
-                        SyntaxHighlightedText(content: item.content, language: item.language)
-                            .frame(maxWidth: .infinity, alignment: .leading)
+                        SyntaxHighlightedText(
+                            content: item.content, 
+                            language: item.language,
+                            showLineNumbers: settings.showLineNumbers,
+                            fontSize: settings.fontSize
+                        )
+                        .frame(maxWidth: .infinity, alignment: .leading)
                     }
                     .frame(maxHeight: 400)
                     .background(Color(NSColor.textBackgroundColor))
@@ -134,9 +133,9 @@ struct ClipboardItemRow: View {
                     )
                 } else {
                     Text(item.content)
-                        .font(.system(.body, design: .monospaced))
-                        .lineLimit(3)
-                        .foregroundColor(.secondary)
+                        .font(.system(size: settings.fontSize, design: .monospaced))
+                        .lineLimit(isMultiline ? 4 : 1)
+                        .foregroundColor(.primary)
                         .multilineTextAlignment(.leading)
                 }
             }
@@ -145,6 +144,13 @@ struct ClipboardItemRow: View {
                 removal: .scale.combined(with: .opacity)
             ))
         }
+    }
+    
+    // MARK: - Helper Properties
+    
+    private var isMultiline: Bool {
+        let contentTrimmed = item.content.trimmingCharacters(in: .whitespacesAndNewlines)
+        return contentTrimmed.components(separatedBy: .newlines).count > 1 || contentTrimmed.count > 100
     }
     
     private var actionButtonsSection: some View {
@@ -159,13 +165,17 @@ struct ClipboardItemRow: View {
                 showCopyFeedback()
             }
             
-            ActionButton(
-                title: showingFullContent ? "Collapse" : "Expand",
-                icon: showingFullContent ? "chevron.up" : "chevron.down",
-                style: .secondary
-            ) {
-                withAnimation(.easeInOut(duration: 0.3)) {
-                    showingFullContent.toggle()
+            // Only show expand button for multiline content
+            if isMultiline {
+                ActionButton(
+                    title: showingFullContent ? "Collapse" : "Expand",
+                    icon: showingFullContent ? "chevron.up" : "chevron.down",
+                    style: .secondary
+                ) {
+                    // Use faster animation for better responsiveness
+                    withAnimation(.easeInOut(duration: 0.15)) {
+                        showingFullContent.toggle()
+                    }
                 }
             }
             
@@ -199,9 +209,12 @@ struct ClipboardItemRow: View {
             showCopyFeedback()
         }
         
-        Button(showingFullContent ? "Collapse" : "Expand") {
-            withAnimation(.easeInOut(duration: 0.3)) {
-                showingFullContent.toggle()
+        // Only show expand option for multiline content
+        if isMultiline {
+            Button(showingFullContent ? "Collapse" : "Expand") {
+                withAnimation(.easeInOut(duration: 0.15)) {
+                    showingFullContent.toggle()
+                }
             }
         }
         
@@ -344,7 +357,8 @@ struct ActionButton: View {
                 language: .swift
             ),
             index: 0,
-            clipboardManager: ClipboardManager(settings: AppSettings())
+            clipboardManager: ClipboardManager(settings: AppSettings()),
+            settings: AppSettings()
         )
         
         ClipboardItemRow(
@@ -355,7 +369,8 @@ struct ActionButton: View {
                 language: .plain
             ),
             index: 1,
-            clipboardManager: ClipboardManager(settings: AppSettings())
+            clipboardManager: ClipboardManager(settings: AppSettings()),
+            settings: AppSettings()
         )
     }
     .padding()

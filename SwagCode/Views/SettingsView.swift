@@ -142,10 +142,18 @@ struct SettingsView: View {
                 }
                 
                 SettingsRow(
-                    title: "Show notifications",
-                    description: "Display notifications when new items are added to clipboard"
+                    title: "Show hotkey notifications",
+                    description: "Display notifications when using hotkeys to paste items"
                 ) {
                     Toggle("", isOn: $settings.showNotifications)
+                        .toggleStyle(.switch)
+                }
+                
+                SettingsRow(
+                    title: "Show clipboard notifications",
+                    description: "Display notifications when new items are detected and saved"
+                ) {
+                    Toggle("", isOn: $settings.showClipboardNotifications)
                         .toggleStyle(.switch)
                 }
                 

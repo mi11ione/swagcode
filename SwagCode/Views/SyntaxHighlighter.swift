@@ -11,11 +11,41 @@ import Foundation
 struct SyntaxHighlightedText: View {
     let content: String
     let language: ProgrammingLanguage
+    let showLineNumbers: Bool
+    let fontSize: Double
+    
+    init(content: String, language: ProgrammingLanguage, showLineNumbers: Bool = false, fontSize: Double = 14) {
+        self.content = content
+        self.language = language
+        self.showLineNumbers = showLineNumbers
+        self.fontSize = fontSize
+    }
     
     var body: some View {
-        Text(highlightedContent)
-            .font(.system(.body, design: .monospaced))
-            .textSelection(.enabled)
+        if showLineNumbers {
+            HStack(alignment: .top, spacing: 12) {
+                // Line numbers
+                VStack(alignment: .trailing, spacing: 0) {
+                    ForEach(Array(content.components(separatedBy: .newlines).enumerated()), id: \.offset) { index, _ in
+                        Text("\(index + 1)")
+                            .font(.system(size: fontSize, design: .monospaced))
+                            .foregroundColor(.secondary)
+                            .frame(minWidth: 30, alignment: .trailing)
+                    }
+                }
+                .padding(.trailing, 8)
+                
+                // Code content
+                Text(highlightedContent)
+                    .font(.system(size: fontSize, design: .monospaced))
+                    .textSelection(.enabled)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+        } else {
+            Text(highlightedContent)
+                .font(.system(size: fontSize, design: .monospaced))
+                .textSelection(.enabled)
+        }
     }
     
     private var highlightedContent: AttributedString {

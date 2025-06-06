@@ -16,6 +16,7 @@ struct OnboardingView: View {
     
     @State private var currentStep: OnboardingStep = .welcome
     @State private var hasAccessibilityPermission = false
+    @State private var hasInputMonitoringPermission = false
     @State private var isCheckingPermissions = false
     
     enum OnboardingStep: Int, CaseIterable {
@@ -179,7 +180,7 @@ struct OnboardingView: View {
                 FeatureRow(
                     icon: "keyboard",
                     title: "Lightning-Fast Hotkeys",
-                    description: "Access your recent clips instantly with ⌘⌥1-9 keyboard shortcuts.",
+                    description: "Access your recent clips instantly with \(settings.hotkeyModifiers.displayString)1-9 keyboard shortcuts.",
                     color: .orange
                 )
                 
@@ -198,27 +199,38 @@ struct OnboardingView: View {
     private var permissionsStep: some View {
         VStack(spacing: 32) {
             VStack(spacing: 16) {
-                Image(systemName: hasAccessibilityPermission ? "checkmark.shield.fill" : "exclamationmark.shield.fill")
+                let allPermissionsGranted = hasAccessibilityPermission && hasInputMonitoringPermission
+                Image(systemName: allPermissionsGranted ? "checkmark.shield.fill" : "exclamationmark.shield.fill")
                     .font(.system(size: 60))
-                    .foregroundColor(hasAccessibilityPermission ? .green : .orange)
+                    .foregroundColor(allPermissionsGranted ? .green : .orange)
                 
-                Text("Accessibility Permission")
+                Text("System Permissions")
                     .font(.title2)
                     .fontWeight(.semibold)
                     .foregroundColor(.primary)
             }
             
             VStack(spacing: 20) {
-                Text("SwagCode needs accessibility permission to register global hotkeys that work system-wide.")
+                Text("SwagCode needs system permissions to monitor global hotkeys and clipboard events.")
                     .font(.body)
                     .foregroundColor(.secondary)
                     .multilineTextAlignment(.center)
                 
                 VStack(spacing: 12) {
-                    PermissionExplanationRow(
+                    PermissionRow(
+                        icon: "accessibility",
+                        title: "Accessibility",
+                        description: "Required for global hotkey registration",
+                        isGranted: hasAccessibilityPermission,
+                        action: openAccessibilitySettings
+                    )
+                    
+                    PermissionRow(
                         icon: "keyboard",
-                        title: "Global Hotkeys",
-                        description: "Press ⌘⌥1-9 from any app to paste clipboard items"
+                        title: "Input Monitoring",
+                        description: "Required to detect global keyboard shortcuts",
+                        isGranted: hasInputMonitoringPermission,
+                        action: openInputMonitoringSettings
                     )
                     
                     PermissionExplanationRow(
@@ -226,53 +238,37 @@ struct OnboardingView: View {
                         title: "Privacy First",
                         description: "SwagCode only monitors keyboard shortcuts, not your typing"
                     )
-                    
-                    PermissionExplanationRow(
-                        icon: "macbook",
-                        title: "System Integration",
-                        description: "Works seamlessly across all your applications"
-                    )
                 }
                 
-                if !hasAccessibilityPermission {
-                    VStack(spacing: 12) {
-                        Button(action: openAccessibilitySettings) {
-                            HStack {
-                                Image(systemName: "gear")
-                                Text("Open System Preferences")
+                VStack(spacing: 12) {
+                    Button(action: checkPermissions) {
+                        HStack {
+                            if isCheckingPermissions {
+                                ProgressView()
+                                    .scaleEffect(0.8)
+                            } else {
+                                Image(systemName: "arrow.clockwise")
                             }
-                            .frame(maxWidth: .infinity)
+                            Text("Check Permissions")
                         }
-                        .buttonStyle(.borderedProminent)
-                        .controlSize(.large)
-                        
-                        Button(action: checkPermissions) {
-                            HStack {
-                                if isCheckingPermissions {
-                                    ProgressView()
-                                        .scaleEffect(0.8)
-                                } else {
-                                    Image(systemName: "arrow.clockwise")
-                                }
-                                Text("Check Again")
-                            }
-                            .frame(maxWidth: .infinity)
+                        .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.bordered)
+                    .controlSize(.large)
+                    .disabled(isCheckingPermissions)
+                    
+                    if hasAccessibilityPermission && hasInputMonitoringPermission {
+                        HStack {
+                            Image(systemName: "checkmark.circle.fill")
+                                .foregroundColor(.green)
+                            Text("All permissions granted! You're ready to use global hotkeys.")
+                                .foregroundColor(.green)
+                                .fontWeight(.medium)
                         }
-                        .buttonStyle(.bordered)
-                        .controlSize(.large)
-                        .disabled(isCheckingPermissions)
+                        .padding()
+                        .background(Color.green.opacity(0.1))
+                        .cornerRadius(12)
                     }
-                } else {
-                    HStack {
-                        Image(systemName: "checkmark.circle.fill")
-                            .foregroundColor(.green)
-                        Text("Permission granted! You're ready to use global hotkeys.")
-                            .foregroundColor(.green)
-                            .fontWeight(.medium)
-                    }
-                    .padding()
-                    .background(Color.green.opacity(0.1))
-                    .cornerRadius(12)
                 }
             }
         }
@@ -427,7 +423,7 @@ struct OnboardingView: View {
             }
             .buttonStyle(.borderedProminent)
             .controlSize(.large)
-            .disabled(currentStep == .permissions && !hasAccessibilityPermission)
+            .disabled(currentStep == .permissions && !(hasAccessibilityPermission && hasInputMonitoringPermission))
         }
         .padding(.horizontal, 60)
         .padding(.bottom, 40)
@@ -437,7 +433,7 @@ struct OnboardingView: View {
         switch currentStep {
         case .welcome: return "Get Started"
         case .features: return "Continue"
-        case .permissions: return hasAccessibilityPermission ? "Continue" : "Grant Permission First"
+        case .permissions: return (hasAccessibilityPermission && hasInputMonitoringPermission) ? "Continue" : "Grant Permissions First"
         case .hotkeys: return "Continue"
         case .complete: return "Start Using SwagCode"
         }
@@ -450,10 +446,11 @@ struct OnboardingView: View {
         
         // Check permissions on background queue to avoid blocking UI
         DispatchQueue.global(qos: .userInitiated).async {
-            let hasPermission = self.hotkeyManager.checkAccessibilityPermissions()
+            let permissions = self.hotkeyManager.checkAllPermissions()
             
             DispatchQueue.main.async {
-                self.hasAccessibilityPermission = hasPermission
+                self.hasAccessibilityPermission = permissions.accessibility
+                self.hasInputMonitoringPermission = permissions.inputMonitoring
                 self.isCheckingPermissions = false
             }
         }
@@ -475,10 +472,22 @@ struct OnboardingView: View {
         }
     }
     
+    private func openInputMonitoringSettings() {
+        // Try to open the specific input monitoring settings page
+        if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_ListenEvent") {
+            NSWorkspace.shared.open(url)
+        } else {
+            // Fallback to general security settings
+            NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.preference.security")!)
+        }
+    }
+    
     private func completeOnboarding() {
         settings.hasCompletedOnboarding = true
         settings.saveSettings()
-        hotkeyManager.updateHotkeys()
+        
+        // Start hotkeys if permissions are available
+        hotkeyManager.startHotkeys()
         
         // Start monitoring if enabled
         if settings.startMonitoringOnLaunch {
@@ -540,6 +549,55 @@ struct FeatureRow: View {
             
             Spacer()
         }
+    }
+}
+
+struct PermissionRow: View {
+    let icon: String
+    let title: String
+    let description: String
+    let isGranted: Bool
+    let action: () -> Void
+    
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(systemName: icon)
+                .font(.title3)
+                .foregroundColor(isGranted ? .green : .orange)
+                .frame(width: 24)
+            
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(.subheadline)
+                    .fontWeight(.medium)
+                    .foregroundColor(.primary)
+                
+                Text(description)
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+            
+            Spacer()
+            
+            if !isGranted {
+                Button("Grant") {
+                    action()
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.small)
+            } else {
+                Image(systemName: "checkmark.circle.fill")
+                    .foregroundColor(.green)
+            }
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
+        .background(Color(NSColor.controlBackgroundColor))
+        .cornerRadius(12)
+        .overlay(
+            RoundedRectangle(cornerRadius: 12)
+                .stroke(isGranted ? Color.green.opacity(0.3) : Color.orange.opacity(0.3), lineWidth: 1)
+        )
     }
 }
 

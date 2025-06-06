@@ -26,7 +26,13 @@ class HotkeyManager: ObservableObject {
     }
     
     func setupHotkeys() {
+        print("🔧 setupHotkeys called")
+        print("   hotkeysEnabled: \(settings.hotkeysEnabled)")
+        print("   Current modifiers: \(settings.hotkeyModifiers.displayString)")
+        print("   Raw modifier values: command=\(settings.hotkeyModifiers.command), option=\(settings.hotkeyModifiers.option), control=\(settings.hotkeyModifiers.control), shift=\(settings.hotkeyModifiers.shift)")
+        
         guard settings.hotkeysEnabled else { 
+            print("   ❌ Hotkeys disabled, removing...")
             removeHotkeys()
             return 
         }
@@ -37,6 +43,8 @@ class HotkeyManager: ObservableObject {
         eventMonitor = NSEvent.addGlobalMonitorForEvents(matching: .keyDown) { [weak self] event in
             self?.handleKeyEvent(event)
         }
+        
+        print("   ✅ Global event monitor created")
     }
     
     private func removeHotkeys() {
@@ -52,27 +60,34 @@ class HotkeyManager: ObservableObject {
         let modifierFlags = event.modifierFlags
         let keyCode = event.keyCode
         
-        // Check if the modifier keys match our settings
-        let hasCommand = modifierFlags.contains(.command) == settings.hotkeyModifiers.command
-        let hasOption = modifierFlags.contains(.option) == settings.hotkeyModifiers.option
-        let hasControl = modifierFlags.contains(.control) == settings.hotkeyModifiers.control
-        let hasShift = modifierFlags.contains(.shift) == settings.hotkeyModifiers.shift
-        
-        // Ensure we don't have extra modifiers
-        let expectedModifiers: NSEvent.ModifierFlags = [
-            settings.hotkeyModifiers.command ? .command : [],
-            settings.hotkeyModifiers.option ? .option : [],
-            settings.hotkeyModifiers.control ? .control : [],
-            settings.hotkeyModifiers.shift ? .shift : []
-        ].reduce([], { $0.union($1) })
-        
-        let relevantFlags = modifierFlags.intersection([.command, .option, .control, .shift])
-        
-        guard relevantFlags == expectedModifiers else { return }
-        
-        // Check if it's a number key (1-9)
+        // Check if it's a number key (1-9) first
         let numberKey = getNumberFromKeyCode(keyCode)
         guard numberKey >= 1 && numberKey <= 9 else { return }
+        
+        // Build expected modifiers
+        var expectedModifiers: NSEvent.ModifierFlags = []
+        if settings.hotkeyModifiers.command { expectedModifiers.insert(.command) }
+        if settings.hotkeyModifiers.option { expectedModifiers.insert(.option) }
+        if settings.hotkeyModifiers.control { expectedModifiers.insert(.control) }
+        if settings.hotkeyModifiers.shift { expectedModifiers.insert(.shift) }
+        
+        // Get only the relevant modifier flags (ignore caps lock, function, etc.)
+        let relevantFlags = modifierFlags.intersection([.command, .option, .control, .shift])
+        
+        // Debug logging
+        print("🔥 HotkeyManager Debug:")
+        print("   Number key: \(numberKey)")
+        print("   Expected modifiers: \(expectedModifiers)")
+        print("   Actual modifiers: \(relevantFlags)")
+        print("   Settings: command=\(settings.hotkeyModifiers.command), option=\(settings.hotkeyModifiers.option), control=\(settings.hotkeyModifiers.control), shift=\(settings.hotkeyModifiers.shift)")
+        
+        // Check if modifiers match exactly
+        guard relevantFlags == expectedModifiers else { 
+            print("   ❌ Modifiers don't match!")
+            return 
+        }
+        
+        print("   ✅ Hotkey matched! Handling...")
         
         // Handle the hotkey
         DispatchQueue.main.async {
@@ -96,17 +111,31 @@ class HotkeyManager: ObservableObject {
     }
     
     private func handleHotkey(number: Int) {
-        guard let clipboardManager = self.clipboardManager else { return }
+        print("🚀 handleHotkey called with number: \(number)")
+        
+        guard let clipboardManager = self.clipboardManager else { 
+            print("❌ No clipboardManager")
+            return 
+        }
         let index = number - 1
         
-        guard index >= 0 && index < clipboardManager.clipboardItems.count else { return }
+        print("📋 Clipboard has \(clipboardManager.clipboardItems.count) items, looking for index \(index)")
+        
+        guard index >= 0 && index < clipboardManager.clipboardItems.count else { 
+            print("❌ Index \(index) out of bounds")
+            return 
+        }
         
         let item = clipboardManager.clipboardItems[index]
+        print("✅ Found item: \(String(item.content.prefix(50)))...")
+        
         clipboardManager.copyToClipboard(item)
+        print("📋 Item copied to clipboard")
         
         // Show brief notification
         if settings.showNotifications {
             showHotkeyNotification(for: item, number: number)
+            print("🔔 Notification shown")
         }
     }
     
@@ -126,19 +155,122 @@ class HotkeyManager: ObservableObject {
     }
     
     func updateHotkeys() {
-        setupHotkeys()
+        // Remove existing hotkeys first
+        removeHotkeys()
+        
+        // Setup new hotkeys with current settings
+        if settings.hotkeysEnabled {
+            setupHotkeys()
+        }
     }
     
-    // MARK: - Accessibility Check
+    func startHotkeys() {
+        print("🔑 startHotkeys called")
+        let permissions = checkAllPermissions()
+        
+        print("   hotkeysEnabled: \(settings.hotkeysEnabled)")
+        print("   accessibility: \(permissions.accessibility)")
+        print("   inputMonitoring: \(permissions.inputMonitoring)")
+        
+        if settings.hotkeysEnabled && permissions.accessibility && permissions.inputMonitoring {
+            print("   ✅ All conditions met, calling setupHotkeys()")
+            setupHotkeys()
+        } else {
+            print("   ❌ Conditions not met:")
+            if !settings.hotkeysEnabled { print("      - Hotkeys disabled") }
+            if !permissions.accessibility { print("      - No accessibility permission") }
+            if !permissions.inputMonitoring { print("      - No input monitoring permission") }
+        }
+    }
+    
+    // MARK: - Permissions Check
     
     func checkAccessibilityPermissions() -> Bool {
-        // Check without showing system prompt to avoid blocking UI
-        return AXIsProcessTrusted()
+        // First check without prompt
+        let hasPermissionInitial = AXIsProcessTrusted()
+        print("🔐 Initial accessibility permission check: \(hasPermissionInitial)")
+        
+        if !hasPermissionInitial {
+            print("🔐 No accessibility permission - requesting with prompt...")
+            
+            // Request permission with prompt - this should show system dialog
+            let options = [kAXTrustedCheckOptionPrompt.takeUnretainedValue(): true]
+            let hasPermissionAfterPrompt = AXIsProcessTrustedWithOptions(options as CFDictionary)
+            print("🔐 Permission after prompt: \(hasPermissionAfterPrompt)")
+            
+            // Wait a bit and check again
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                let finalCheck = AXIsProcessTrusted()
+                print("🔐 Final permission check: \(finalCheck)")
+                
+                if finalCheck {
+                    print("🎉 Permission granted! Restarting hotkeys...")
+                    self.startHotkeys()
+                } else {
+                    print("🔐 Still no permission - opening settings...")
+                    let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility")!
+                    NSWorkspace.shared.open(url)
+                }
+            }
+            
+            return hasPermissionAfterPrompt
+        }
+        
+        return hasPermissionInitial
+    }
+    
+    func checkInputMonitoringPermissions() -> Bool {
+        // Check if we have input monitoring permissions
+        // This is needed for global key event monitoring
+        if #available(macOS 10.15, *) {
+            // Try to create a temporary monitor to test permissions
+            var hasPermission = false
+            let testMonitor = NSEvent.addGlobalMonitorForEvents(matching: .keyDown) { _ in
+                // This block won't be called if we don't have permission
+            }
+            
+            if testMonitor != nil {
+                hasPermission = true
+                NSEvent.removeMonitor(testMonitor!)
+            }
+            
+            print("🔐 Input monitoring permission check: \(hasPermission)")
+            return hasPermission
+        }
+        print("🔐 Input monitoring permission check: true (macOS < 10.15)")
+        return true // Older macOS versions don't require explicit permission
+    }
+    
+    func checkAllPermissions() -> (accessibility: Bool, inputMonitoring: Bool) {
+        return (
+            accessibility: checkAccessibilityPermissions(),
+            inputMonitoring: checkInputMonitoringPermissions()
+        )
     }
     
     func requestAccessibilityPermissions() {
         // This method is now handled by the onboarding flow
         // We just open system preferences without blocking
         NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility")!)
+    }
+    
+    func requestInputMonitoringPermissions() {
+        // Open Input Monitoring preferences
+        NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_ListenEvent")!)
+    }
+    
+    // Force recheck permissions and restart hotkeys if needed
+    func recheckPermissions() {
+        print("🔄 Force rechecking permissions...")
+        let permissions = checkAllPermissions()
+        
+        if permissions.accessibility && permissions.inputMonitoring && settings.hotkeysEnabled {
+            print("🎉 All permissions granted! Setting up hotkeys...")
+            setupHotkeys()
+        } else {
+            print("❌ Still missing permissions:")
+            if !permissions.accessibility { print("   - Accessibility") }
+            if !permissions.inputMonitoring { print("   - Input Monitoring") }
+        }
     }
 }

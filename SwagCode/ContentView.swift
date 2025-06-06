@@ -277,6 +277,17 @@ struct ContentView: View {
             .controlSize(.large)
             
             Button(action: {
+                hotkeyManager.recheckPermissions()
+            }) {
+                Label("Fix Hotkeys", systemImage: "key.fill")
+                    .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.bordered)
+            .controlSize(.large)
+            .foregroundColor(.orange)
+            .help("Recheck permissions and restart hotkeys")
+            
+            Button(action: {
                 withAnimation {
                     clipboardManager.clearAll()
                 }
@@ -315,7 +326,7 @@ struct ContentView: View {
                     .foregroundColor(.primary)
                 
                 Text(clipboardManager.clipboardItems.isEmpty ? 
-                     "Copy some text or code to get started.\nUse ⌘⌥1-9 hotkeys to quickly paste saved items." : 
+                     "Copy some text or code to get started.\nUse \(settings.hotkeyModifiers.displayString)1-9 hotkeys to quickly paste saved items." : 
                      "Try adjusting your search or filters to find what you're looking for.")
                     .multilineTextAlignment(.center)
                     .foregroundColor(.secondary)
@@ -325,12 +336,12 @@ struct ContentView: View {
             if clipboardManager.clipboardItems.isEmpty {
                 VStack(spacing: 12) {
                     HStack(spacing: 16) {
-                        HotkeyIndicator(keys: "⌘⌥1", description: "Paste latest")
-                        HotkeyIndicator(keys: "⌘⌥2", description: "Paste 2nd latest")
-                        HotkeyIndicator(keys: "⌘⌥3", description: "Paste 3rd latest")
+                        HotkeyIndicator(keys: "\(settings.hotkeyModifiers.displayString)1", description: "Paste latest")
+                        HotkeyIndicator(keys: "\(settings.hotkeyModifiers.displayString)2", description: "Paste 2nd latest")
+                        HotkeyIndicator(keys: "\(settings.hotkeyModifiers.displayString)3", description: "Paste 3rd latest")
                     }
                     
-                    Text("...and so on up to ⌘⌥9")
+                    Text("...and so on up to \(settings.hotkeyModifiers.displayString)9")
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }
@@ -348,7 +359,8 @@ struct ContentView: View {
                     ClipboardItemRow(
                         item: item,
                         index: clipboardManager.clipboardItems.firstIndex(of: item) ?? index,
-                        clipboardManager: clipboardManager
+                        clipboardManager: clipboardManager,
+                        settings: settings
                     )
                     .transition(.asymmetric(
                         insertion: .move(edge: .trailing).combined(with: .opacity),

@@ -10,19 +10,22 @@ A powerful clipboard manager for developers built with SwiftUI for macOS.
 - **Clipboard History Management** - Automatically saves up to 500 clipboard items
 - **Smart Language Detection** - Automatically detects programming languages from copied code
 - **Syntax Highlighting** - Beautiful syntax highlighting for 25+ programming languages
-- **Global Hotkeys** - Quick access with customizable keyboard shortcuts (⌘⌥1-9)
+- **Global Hotkeys** - Quick access with customizable keyboard shortcuts (⌃⌥1-9)
 - **Search & Filter** - Powerful search and filtering by language and content type
 
 ### 🎨 User Interface
 - **Native macOS Design** - Beautiful, modern SwiftUI interface
 - **Status Bar Integration** - Quick access from the menu bar
 - **Customizable Appearance** - Multiple themes and font size options
+- **Smart Content Display** - Automatic title hiding for short items
+- **Conditional Expand** - Expand button only shown for multiline content
+- **Line Numbers** - Optional line numbers for code snippets
 - **Responsive Layout** - Adaptive interface that works on all screen sizes
 
 ### 🔧 Advanced Features
 - **Smart Content Detection** - Automatically categorizes URLs, emails, code, and text
 - **Export/Import** - Backup and restore your clipboard history
-- **Notifications** - Optional notifications for new clipboard items
+- **Smart Notifications** - Separate notifications for hotkey usage and new clipboard items
 - **Data Management** - Configurable item limits and automatic cleanup
 
 ## Supported Languages
@@ -79,10 +82,12 @@ SwagCode requires the following permissions:
 ### Hotkeys
 
 Default hotkeys (customizable in settings):
-- `⌘⌥1` - Paste most recent item
-- `⌘⌥2` - Paste second most recent item
-- `⌘⌥3` - Paste third most recent item
-- ... and so on up to `⌘⌥9`
+- `⌃⌥1` - Paste most recent item
+- `⌃⌥2` - Paste second most recent item
+- `⌃⌥3` - Paste third most recent item
+- ... and so on up to `⌃⌥9`
+
+**Note:** Hotkey combinations are fully customizable in settings. You can use any combination of Command (⌘), Option (⌥), Control (⌃), and Shift (⇧) modifiers.
 
 ### Menu Bar Actions
 
@@ -96,7 +101,8 @@ Default hotkeys (customizable in settings):
 **General Settings:**
 - Maximum clipboard items (10-500)
 - Auto-detect programming language
-- Show notifications
+- Show hotkey notifications
+- Show clipboard notifications
 - Start monitoring on launch
 
 **Hotkey Settings:**

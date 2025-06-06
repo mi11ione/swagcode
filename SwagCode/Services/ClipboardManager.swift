@@ -8,6 +8,7 @@
 import Foundation
 import AppKit
 import SwiftUI
+import CoreGraphics
 
 class ClipboardManager: ObservableObject {
     @Published var clipboardItems: [ClipboardItem] = []
@@ -35,6 +36,16 @@ class ClipboardManager: ObservableObject {
         
         isMonitoring = true
         lastChangeCount = pasteboard.changeCount
+        
+        // Check if current clipboard content is already in our list
+        if let currentString = pasteboard.string(forType: .string),
+           !currentString.isEmpty,
+           let firstItem = clipboardItems.first,
+           firstItem.content != currentString {
+            // Current clipboard content is different from our latest saved item
+            // This means something was copied while app was closed, so add it
+            checkClipboard()
+        }
         
         timer = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) { [weak self] _ in
             self?.checkClipboard()
@@ -82,8 +93,8 @@ class ClipboardManager: ObservableObject {
             
             self.saveClipboardItems()
             
-            if self.settings.showNotifications {
-                self.showNotification(for: newItem)
+            if self.settings.showClipboardNotifications {
+                self.showClipboardNotification(for: newItem)
             }
         }
     }
@@ -112,20 +123,73 @@ class ClipboardManager: ObservableObject {
         return .text
     }
     
-    private func showNotification(for item: ClipboardItem) {
+    private func showClipboardNotification(for item: ClipboardItem) {
         let notification = NSUserNotification()
         notification.title = "SwagCode"
         notification.subtitle = "New \(item.type.rawValue) saved"
         notification.informativeText = String(item.displayTitle.prefix(100))
-        notification.soundName = NSUserNotificationDefaultSoundName
+        notification.soundName = nil // Silent notification to avoid annoyance
         
         NSUserNotificationCenter.default.deliver(notification)
+        
+        // Auto-remove after 3 seconds
+        DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
+            NSUserNotificationCenter.default.removeDeliveredNotification(notification)
+        }
     }
     
     func copyToClipboard(_ item: ClipboardItem) {
+        // First, copy to system clipboard
         pasteboard.clearContents()
         pasteboard.setString(item.content, forType: .string)
         lastChangeCount = pasteboard.changeCount // Prevent re-adding the same item
+        
+        // Then simulate Cmd+V to paste in the active application
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+            self.simulatePaste()
+        }
+    }
+    
+    private func simulatePaste() {
+        // Method 1: Try using AppleScript (more reliable)
+        let script = """
+        tell application "System Events"
+            keystroke "v" using command down
+        end tell
+        """
+        
+        if let appleScript = NSAppleScript(source: script) {
+            var error: NSDictionary?
+            appleScript.executeAndReturnError(&error)
+            
+            if error != nil {
+                // Fallback to CGEvent method
+                simulatePasteWithCGEvent()
+            }
+        } else {
+            // Fallback to CGEvent method
+            simulatePasteWithCGEvent()
+        }
+    }
+    
+    private func simulatePasteWithCGEvent() {
+        // Create and post a Cmd+V key event to paste the content
+        let source = CGEventSource(stateID: .hidSystemState)
+        
+        // Key down for Cmd+V (V key is virtual key code 9)
+        if let keyDownEvent = CGEvent(keyboardEventSource: source, virtualKey: 9, keyDown: true) {
+            keyDownEvent.flags = .maskCommand
+            keyDownEvent.post(tap: .cghidEventTap)
+        }
+        
+        // Small delay between key down and up
+        usleep(10000) // 10ms delay
+        
+        // Key up for Cmd+V
+        if let keyUpEvent = CGEvent(keyboardEventSource: source, virtualKey: 9, keyDown: false) {
+            keyUpEvent.flags = .maskCommand
+            keyUpEvent.post(tap: .cghidEventTap)
+        }
     }
     
     func deleteItem(_ item: ClipboardItem) {

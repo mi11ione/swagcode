@@ -24,6 +24,14 @@ struct SwagCodeApp: App {
         self._settings = StateObject(wrappedValue: sharedSettings)
         self._clipboardManager = StateObject(wrappedValue: clipboardManager)
         self._hotkeyManager = StateObject(wrappedValue: hotkeyManager)
+        
+        // Debug: Print initial settings
+        print("🔧 SwagCodeApp init - Initial hotkey settings:")
+        print("   command: \(sharedSettings.hotkeyModifiers.command)")
+        print("   option: \(sharedSettings.hotkeyModifiers.option)")
+        print("   control: \(sharedSettings.hotkeyModifiers.control)")
+        print("   shift: \(sharedSettings.hotkeyModifiers.shift)")
+        print("   displayString: \(sharedSettings.hotkeyModifiers.displayString)")
     }
     
     var body: some Scene {
@@ -72,7 +80,7 @@ struct SwagCodeApp: App {
                         window.makeKeyAndOrderFront(nil)
                     }
                 }
-                .keyboardShortcut("1", modifiers: [.command, .shift])
+                .keyboardShortcut("1", modifiers: [.control, .option])
                 
                 Button("Clear All Clipboard Items") {
                     clipboardManager.clearAll()
@@ -98,20 +106,20 @@ struct SwagCodeApp: App {
     }
     
     private func startAppIfNeeded() {
+        print("🚀 startAppIfNeeded called")
+        
         // Start monitoring clipboard if enabled
         if settings.startMonitoringOnLaunch {
+            print("📋 Starting clipboard monitoring")
             clipboardManager.startMonitoring()
         }
         
         // Setup hotkeys if permissions are granted (check asynchronously)
-        if settings.hotkeysEnabled {
-            DispatchQueue.global(qos: .userInitiated).async {
-                let hasPermissions = self.hotkeyManager.checkAccessibilityPermissions()
-                if hasPermissions {
-                    DispatchQueue.main.async {
-                        self.hotkeyManager.updateHotkeys()
-                    }
-                }
+        print("🔑 Setting up hotkeys...")
+        DispatchQueue.global(qos: .userInitiated).async {
+            DispatchQueue.main.async {
+                print("🔑 Calling hotkeyManager.startHotkeys()")
+                self.hotkeyManager.startHotkeys()
             }
         }
     }

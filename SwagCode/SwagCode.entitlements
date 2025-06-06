@@ -20,5 +20,7 @@
     <true/>
     <key>com.apple.security.automation.accessibility</key>
     <true/>
+    <key>com.apple.security.device.input-monitoring</key>
+    <true/>
 </dict>
 </plist>
