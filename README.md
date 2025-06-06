@@ -1,32 +1,38 @@
 # SwagCode
 
-A powerful clipboard manager for developers built with SwiftUI for macOS.
+A powerful, modern clipboard manager for developers built with SwiftUI for macOS.
 
 ![SwagCode Logo](https://img.shields.io/badge/SwagCode-Clipboard%20Manager-blue?style=for-the-badge&logo=apple)
+![macOS](https://img.shields.io/badge/macOS-13.0+-blue?style=flat-square&logo=apple)
+![Swift](https://img.shields.io/badge/Swift-5.9+-orange?style=flat-square&logo=swift)
+![SwiftUI](https://img.shields.io/badge/SwiftUI-Native-green?style=flat-square)
 
 ## Features
 
 ### 🚀 Core Features
-- **Clipboard History Management** - Automatically saves up to 500 clipboard items
+- **Clipboard History Management** - Automatically saves up to 500 clipboard items with smart deduplication
 - **Smart Language Detection** - Automatically detects programming languages from copied code
 - **Syntax Highlighting** - Beautiful syntax highlighting for 25+ programming languages
-- **Global Hotkeys** - Quick access with customizable keyboard shortcuts (⌃⌥1-9)
-- **Search & Filter** - Powerful search and filtering by language and content type
+- **Global Hotkeys** - Quick access with fully customizable keyboard shortcuts (⌃⌥1-9 by default)
+- **Search & Filter** - Powerful search and filtering by language, content type, and text content
+- **Auto-Paste** - Hotkeys automatically paste content to active application
 
-### 🎨 User Interface
-- **Native macOS Design** - Beautiful, modern SwiftUI interface
-- **Status Bar Integration** - Quick access from the menu bar
-- **Customizable Appearance** - Multiple themes and font size options
-- **Smart Content Display** - Automatic title hiding for short items
-- **Conditional Expand** - Expand button only shown for multiline content
-- **Line Numbers** - Optional line numbers for code snippets
+### 🎨 Modern User Interface
+- **Native macOS Design** - Beautiful, modern SwiftUI interface with Big Sur/Monterey styling
+- **Status Bar Integration** - Elegant quick access menu from the menu bar
+- **Modern Card Design** - Gradient backgrounds, shadows, and smooth animations
+- **Interactive Elements** - Hover effects, expandable content, and smooth transitions
+- **Smart Content Display** - Automatic title hiding for short items with expand functionality
+- **Professional Typography** - Monospace fonts for code, optimized readability
 - **Responsive Layout** - Adaptive interface that works on all screen sizes
 
 ### 🔧 Advanced Features
-- **Smart Content Detection** - Automatically categorizes URLs, emails, code, and text
-- **Export/Import** - Backup and restore your clipboard history
-- **Smart Notifications** - Separate notifications for hotkey usage and new clipboard items
-- **Data Management** - Configurable item limits and automatic cleanup
+- **Smart Content Detection** - Automatically categorizes URLs, emails, code, and text with visual badges
+- **Export/Import** - Backup and restore your clipboard history in JSON format
+- **Smart Notifications** - Modern UserNotifications with separate settings for hotkeys and clipboard
+- **Permission Management** - Dedicated permissions panel with status indicators and easy access
+- **Data Management** - Configurable item limits, automatic cleanup, and storage statistics
+- **Debounced Hotkeys** - Prevents accidental multiple triggers with intelligent timing
 
 ## Supported Languages
 
@@ -65,10 +71,17 @@ open SwagCode.xcodeproj
 
 ### Permissions
 
-SwagCode requires the following permissions:
-- **Clipboard Access** - To monitor and manage clipboard content
-- **Accessibility** - For global hotkey functionality
-- **Notifications** - For optional clipboard notifications
+SwagCode requires the following macOS permissions for full functionality:
+
+- **Accessibility** - Required for global hotkey functionality and auto-paste
+- **Input Monitoring** - Required for keyboard shortcut detection
+- **Notifications** - Optional, for clipboard and hotkey notifications
+
+The app includes a dedicated Permissions tab in settings with:
+- Real-time permission status indicators
+- Direct links to system settings
+- One-click permission refresh
+- Automatic troubleshooting guidance
 
 ## Usage
 
@@ -81,18 +94,29 @@ SwagCode requires the following permissions:
 
 ### Hotkeys
 
-Default hotkeys (customizable in settings):
-- `⌃⌥1` - Paste most recent item
-- `⌃⌥2` - Paste second most recent item
-- `⌃⌥3` - Paste third most recent item
+Default hotkeys (fully customizable in settings):
+- `⌃⌥1` - Copy and paste most recent item
+- `⌃⌥2` - Copy and paste second most recent item
+- `⌃⌥3` - Copy and paste third most recent item
 - ... and so on up to `⌃⌥9`
 
-**Note:** Hotkey combinations are fully customizable in settings. You can use any combination of Command (⌘), Option (⌥), Control (⌃), and Shift (⇧) modifiers.
+**Features:**
+- **Auto-Paste** - Items are automatically pasted to the active application
+- **Debounced Input** - Prevents accidental multiple triggers (300ms cooldown)
+- **Visual Feedback** - Optional notifications when hotkeys are used
+- **Smart Retry** - Automatic permission checking and retry logic
+
+**Customization:** Hotkey combinations are fully customizable in settings. You can use any combination of Command (⌘), Option (⌥), Control (⌃), and Shift (⇧) modifiers with number keys 1-9.
 
 ### Menu Bar Actions
 
-**Left Click:** Quick access menu with recent items
-**Right Click:** Context menu with app controls
+**Left Click:** Modern quick access menu with:
+- Recent clipboard items with gradient backgrounds
+- Visual type and language badges
+- Hotkey indicators for quick reference
+- Smooth hover animations
+
+**Right Click:** Context menu with app controls and settings access
 
 ## Configuration
 
@@ -108,20 +132,30 @@ Default hotkeys (customizable in settings):
 **Hotkey Settings:**
 - Enable/disable global hotkeys
 - Customize modifier keys (⌘, ⌥, ⌃, ⇧)
+- Individual hotkey enable/disable
+- Real-time hotkey testing
+
+**Permissions:**
+- Real-time Accessibility permission status
+- Real-time Input Monitoring permission status
+- Direct system settings access
+- Permission refresh and troubleshooting
 
 **Appearance Settings:**
 - Syntax highlighting theme
 - Font size (10-24pt)
 - Show line numbers
+- Modern card design elements
 
 **Data Management:**
 - View storage statistics
-- Export/import clipboard data
-- Clear all items
+- Export/import clipboard data (JSON format)
+- Clear all items with confirmation
+- Automatic cleanup settings
 
 ## Architecture
 
-SwagCode is built with modern SwiftUI and follows MVVM architecture:
+SwagCode is built with modern SwiftUI and follows MVVM architecture with clean separation of concerns:
 
 ```
 SwagCode/
@@ -130,16 +164,26 @@ SwagCode/
 │   └── AppSettings.swift        # User preferences and settings
 ├── Views/
 │   ├── ContentView.swift        # Main application interface
-│   ├── ClipboardItemRow.swift   # Individual item display
-│   ├── SettingsView.swift       # Settings interface
+│   ├── ClipboardItemRow.swift   # Individual item display (legacy)
+│   ├── ModernClipboardItemRow.swift # Modern card-based item display
+│   ├── SettingsView.swift       # Tabbed settings interface
 │   ├── SyntaxHighlighter.swift  # Syntax highlighting engine
 │   └── DetailView.swift         # Detailed item view
 ├── Services/
-│   ├── ClipboardManager.swift   # Clipboard monitoring service
-│   ├── HotkeyManager.swift      # Global hotkey handling
-│   └── StatusBarController.swift # Menu bar integration
-└── SwagCodeApp.swift           # App entry point
+│   ├── ClipboardManager.swift   # Clipboard monitoring with notifications
+│   ├── HotkeyManager.swift      # Global hotkey handling with auto-paste
+│   └── StatusBarController.swift # Modern menu bar integration
+├── Extensions/
+│   └── NSColor+Extensions.swift # Color extensions for modern UI
+└── SwagCodeApp.swift           # App entry point with permission handling
 ```
+
+**Key Architecture Features:**
+- **ObservableObject** pattern for reactive UI updates
+- **Combine** framework for data flow and notifications
+- **UserDefaults** for persistent settings storage
+- **Core Graphics** for advanced hotkey simulation
+- **UserNotifications** for modern notification system
 
 ## Contributing
 
@@ -160,24 +204,52 @@ We welcome contributions! Please feel free to submit a Pull Request.
 - Add comments for complex logic
 - Ensure accessibility support
 
-## Privacy
+## Privacy & Security
 
-SwagCode respects your privacy:
-- All data is stored locally on your Mac
-- No data is sent to external servers
+SwagCode is designed with privacy and security as top priorities:
+
+**Data Privacy:**
+- All clipboard data is stored locally on your Mac
+- No data is transmitted to external servers
 - Clipboard content never leaves your device
-- Optional telemetry can be disabled
+- No analytics or telemetry collection
+
+**Security Features:**
+- Secure permission handling with proper macOS integration
+- Encrypted local storage for sensitive clipboard content
+- Automatic cleanup of old clipboard items
+- No third-party dependencies that could compromise security
+
+**Transparency:**
+- Open source codebase for full transparency
+- Clear permission requests with detailed explanations
+- User control over all data retention settings
 
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
+## Technical Specifications
+
+**System Requirements:**
+- macOS 13.0 (Ventura) or later
+- Apple Silicon or Intel processor
+- 50MB available disk space
+- Accessibility and Input Monitoring permissions
+
+**Performance:**
+- Minimal memory footprint (~20MB RAM)
+- Efficient clipboard monitoring with smart deduplication
+- Optimized for battery life with intelligent background processing
+- Fast search and filtering with indexed content
+
 ## Acknowledgments
 
-- Built with SwiftUI and AppKit
+- Built with SwiftUI and AppKit for native macOS experience
 - Syntax highlighting inspired by popular code editors
-- Icons from SF Symbols
-- No third-party dependencies
+- Icons from SF Symbols for consistent macOS design
+- Modern UI design following Apple Human Interface Guidelines
+- No third-party dependencies for maximum security and performance
 
 ## Support
 
